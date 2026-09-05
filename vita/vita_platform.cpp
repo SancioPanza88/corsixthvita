@@ -75,12 +75,12 @@ __attribute__((constructor)) static void vita_bringup() {
 // Vita newlib's _stat_r/_fstat_r hang on app0: paths (verified on hardware:
 // fopen() and std::filesystem::status() freeze with no error while open(),
 // sceIoOpen() and sceIoLseek() work). Everything file-shaped - Lua loadfile,
-// persist, lfs, SDL, freetype - is built on those two, so override them with
-// implementations using only the proven primitives. Static linking prefers
-// these definitions over libc's. st_mode/st_size are accurate for stat();
-// fstat() gets a plausible regular-file answer, which is all fopen needs.
+// persist, lfs, SDL, freetype - is built on those two, so they are wrapped
+// (see --wrap= flags on the CorsixTH target) with implementations using only
+// the proven primitives. st_mode/st_size are accurate for stat(); fstat()
+// gets a plausible regular-file answer, which is all fopen needs.
 extern "C" {
-int _stat_r(struct _reent* reent, const char* path, struct stat* buf) {
+int __wrap__stat_r(struct _reent* reent, const char* path, struct stat* buf) {
   (void)reent;
   if (!path || !buf) {
     errno = EINVAL;
@@ -112,7 +112,7 @@ int _stat_r(struct _reent* reent, const char* path, struct stat* buf) {
   errno = ENOENT;
   return -1;
 }
-int _fstat_r(struct _reent* reent, int fd, struct stat* buf) {
+int __wrap__fstat_r(struct _reent* reent, int fd, struct stat* buf) {
   (void)reent;
   (void)fd;
   if (!buf) {

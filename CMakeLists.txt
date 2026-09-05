@@ -391,6 +391,8 @@ foreach(_vita_req VITA_SDL2_LIB VITA_SDL2MIXER_LIB VITA_VORBISFILE_LIB VITA_VORB
 endforeach()
 
 target_link_libraries(CorsixTH PRIVATE
+  -Wl,--wrap=_stat_r
+  -Wl,--wrap=_fstat_r
   -Wl,--start-group
   ${VITA_SDL2MIXER_LIB}
   ${VITA_VORBISFILE_LIB}
