@@ -87,6 +87,40 @@ jobs:
           export PATH=$VITASDK/bin:$PATH
           cmake --build build --target package-vpk
           ls -la build/*.vpk
+          # The firmware rejects non-palette PNGs with 0x8010113D at install
+          # time, so fail here instead of on the console.
+          python3 - build/*.vpk <<'PY'
+          import glob, struct, sys, zipfile
+          ok = True
+          want = {"sce_sys/icon0.png": (128, 128),
+                  "sce_sys/pic0.png": (960, 544),
+                  "sce_sys/livearea/contents/bg0.png": (840, 500),
+                  "sce_sys/livearea/contents/startup.png": (280, 158)}
+          vpk = glob.glob("build/*.vpk")[0]
+          with zipfile.ZipFile(vpk) as z:
+            names = set(z.namelist())
+            for name, (w, h) in want.items():
+              if name not in names:
+                print(f"FAIL {name}: missing from VPK")
+                ok = False
+                continue
+              data = z.read(name)
+              pos = 8
+              while pos + 8 <= len(data):
+                ln = struct.unpack(">I", data[pos:pos+4])[0]
+                if data[pos+4:pos+8] == b"IHDR":
+                  pw, ph = struct.unpack(">II", data[pos+8:pos+16])
+                  bd, ct = data[pos+16], data[pos+17]
+                  good = (bd, ct, pw, ph) == (8, 3, w, h)
+                  print(f"{'OK' if good else 'FAIL'} {name}: {pw}x{ph} depth={bd} colortype={ct}")
+                  ok = ok and good
+                  break
+                pos += 12 + ln
+              else:
+                print(f"FAIL {name}: no IHDR found")
+                ok = False
+          sys.exit(0 if ok else 1)
+          PY
 
       - name: Upload VPK
         uses: actions/upload-artifact@v4

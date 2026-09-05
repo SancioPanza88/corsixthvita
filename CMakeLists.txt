@@ -110,7 +110,8 @@ endif()
 if(VITA_PYTHON AND _livearea_rc EQUAL 0)
   list(APPEND VITA_ART_PAIRS
     "${VITA_LIVEAREA_DIR}/icon0.png=sce_sys/icon0.png"
-    "${VITA_LIVEAREA_DIR}/livearea/contents/bg.png=sce_sys/livearea/contents/bg.png"
+    "${VITA_LIVEAREA_DIR}/pic0.png=sce_sys/pic0.png"
+    "${VITA_LIVEAREA_DIR}/livearea/contents/bg0.png=sce_sys/livearea/contents/bg0.png"
     "${VITA_LIVEAREA_DIR}/livearea/contents/startup.png=sce_sys/livearea/contents/startup.png"
     "${CMAKE_CURRENT_SOURCE_DIR}/vita/sce_sys/livearea/contents/template.xml=sce_sys/livearea/contents/template.xml"
   )
