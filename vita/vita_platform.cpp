@@ -1,4 +1,5 @@
 #include "vita_platform.h"
+#include "vita_build_tag.h"
 
 #include <cstdio>
 #include <errno.h>
@@ -33,10 +34,11 @@ __attribute__((constructor)) static void vita_bringup() {
   std::freopen("ux0:data/corsixth/stderr.txt", "w", stderr);
   std::setvbuf(stdout, nullptr, _IONBF, 0);
   std::setvbuf(stderr, nullptr, _IONBF, 0);
-  std::fprintf(stderr, "corsixth-vita: bringup done, entering main\n");
+  std::fprintf(stderr, "corsixth-vita: bringup build=%s, entering main\n", VITA_BUILD_TAG);
   // Decisive pre-main probe: can we actually READ from app0:? If this line
   // never appears, the hang is below us (kernel/fs). If size is -1, the
   // bundled game/ data is missing from the VPK.
+  std::fprintf(stderr, "corsixth-vita: app0 probe start\n");
   if (std::FILE* probe = std::fopen("app0:/game/CorsixTH.lua", "rb")) {
     std::fseek(probe, 0, SEEK_END);
     long size = std::ftell(probe);

@@ -20,6 +20,24 @@ endif()
 project(CorsixTH-Vita C CXX)
 include("$ENV{VITASDK}/share/vita.cmake" REQUIRED)
 
+# Build tag baked into the boot log so a stderr.txt always tells us exactly
+# which binary produced it (ends "which VPK is installed" disputes).
+find_package(Git QUIET)
+if(GIT_FOUND)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    OUTPUT_VARIABLE VITA_BUILD_TAG
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+  )
+endif()
+if(NOT VITA_BUILD_TAG)
+  set(VITA_BUILD_TAG "unknown")
+endif()
+file(WRITE "${CMAKE_BINARY_DIR}/vita_build_tag.h"
+  "#pragma once\n#define VITA_BUILD_TAG \"${VITA_BUILD_TAG}\"\n")
+
 set(VITA_APP_NAME "CorsixTH")
 set(VITA_TITLEID "CRSXTH001")
 set(VITA_VERSION "00.90")
@@ -141,6 +159,7 @@ add_library(vita_platform STATIC
   vita/vita_platform.cpp
 )
 target_include_directories(vita_platform PUBLIC vita)
+target_include_directories(vita_platform PRIVATE "${CMAKE_BINARY_DIR}")
 target_link_libraries(vita_platform PUBLIC
   SceIofilemgr_stub
   ScePower_stub
