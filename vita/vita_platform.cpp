@@ -1,5 +1,6 @@
 #include "vita_platform.h"
 
+#include <cstdio>
 #include <errno.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -21,11 +22,18 @@ void power_tick() {
 
 // Runs before main(). Upstream never learns about ux0: paths at this stage;
 // all we guarantee here is that the directories exist so early file writes
-// (config, logs) do not fail.
+// (config, logs) do not fail. stdout/stderr go to ux0:data/corsixth/*.txt
+// (unbuffered) so crashes and Lua errors leave a trace readable via
+// VitaShell USB/FTP - on Vita there is no console to print to.
 __attribute__((constructor)) static void vita_bringup() {
   sceIoMkdir("ux0:data", 0777);
   sceIoMkdir(data_dir(), 0777);
   sceIoMkdir(save_dir(), 0777);
+  std::freopen("ux0:data/corsixth/stdout.txt", "w", stdout);
+  std::freopen("ux0:data/corsixth/stderr.txt", "w", stderr);
+  std::setvbuf(stdout, nullptr, _IONBF, 0);
+  std::setvbuf(stderr, nullptr, _IONBF, 0);
+  std::fprintf(stderr, "corsixth-vita: bringup done, entering main\n");
 }
 
 } // namespace corsix_vita
