@@ -57,43 +57,14 @@ jobs:
         run: |
           export VITASDK=/usr/local/vitasdk
           export PATH=$VITASDK/bin:$PATH
-          # No pipefail-safe PIPESTATUS under sh: capture to a file instead.
-          # The tail plus the error lines also land in the run summary so a
-          # failure can be diagnosed from the Actions page alone.
-          set +e
-          cmake --build build -j"$(nproc)" >build.log 2>&1
-          rc=$?
-          set -e
-          tail -3 build.log || true
-          {
-            echo "## Build digest (exit $rc)"
-            echo '```'
-            grep -iE 'error' build.log | head -40 || true
-            echo '```'
-            echo "### Candidate binaries"
-            echo '```'
-            find build -maxdepth 4 \( -name 'corsix-th' -o -name 'CorsixTH' -o -name '*.velf' \) -exec ls -la {} \; 2>/dev/null || true
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit $rc
+          cmake --build build -j"$(nproc)"
 
       - name: Package VPK
         run: |
           export VITASDK=/usr/local/vitasdk
           export PATH=$VITASDK/bin:$PATH
-          set +e
-          cmake --build build --target package-vpk >package.log 2>&1
-          rc=$?
-          set -e
-          tail -5 package.log || true
-          ls -la build/*.vpk || true
-          {
-            echo "## Package digest (exit $rc)"
-            echo '```'
-            tail -25 package.log || true
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit $rc
+          cmake --build build --target package-vpk
+          ls -la build/*.vpk
 
       - name: Upload VPK
         uses: actions/upload-artifact@v4
