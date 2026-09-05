@@ -2,7 +2,9 @@
 #include "vita_build_tag.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -35,30 +37,24 @@ __attribute__((constructor)) static void vita_bringup() {
   std::setvbuf(stdout, nullptr, _IONBF, 0);
   std::setvbuf(stderr, nullptr, _IONBF, 0);
   std::fprintf(stderr, "corsixth-vita: bringup build=%s, entering main\n", VITA_BUILD_TAG);
-  // app0: access matrix: stdio+fopen froze on the previous build without a
-  // clean failure, so try every access method and log each result. Whatever
-  // works here decides how the interpreter path is addressed.
+  // stdio fopen() freezes on this build while raw sceIoOpen() works, so map
+  // the fault line: heap/malloc first, then POSIX open(), then sceIo reads.
+  // (Previous fopen probes hung the boot and were removed.)
+  std::fprintf(stderr, "corsixth-vita: probe malloc start\n");
+  void* heap_probe = std::malloc(1024);
+  std::fprintf(stderr, "corsixth-vita: probe malloc=%p\n", heap_probe);
+  std::free(heap_probe);
+  std::fprintf(stderr, "corsixth-vita: probe open(app0:) start\n");
+  int posix_fd = ::open("app0:/game/CorsixTH.lua", O_RDONLY);
+  std::fprintf(stderr, "corsixth-vita: probe open(app0:) fd=%d\n", posix_fd);
+  if (posix_fd >= 0) ::close(posix_fd);
   std::fprintf(stderr, "corsixth-vita: probe sceIoOpen(app0:) start\n");
   SceUID fd = sceIoOpen("app0:/game/CorsixTH.lua", SCE_O_RDONLY, 0777);
   std::fprintf(stderr, "corsixth-vita: probe sceIoOpen(app0:) fd=%d\n", (int)fd);
-  if (fd >= 0) sceIoClose(fd);
-  std::fprintf(stderr, "corsixth-vita: probe fopen(relative) start\n");
-  if (std::FILE* rel = std::fopen("game/CorsixTH.lua", "rb")) {
-    std::fseek(rel, 0, SEEK_END);
-    long size = std::ftell(rel);
-    std::fclose(rel);
-    std::fprintf(stderr, "corsixth-vita: probe fopen(relative) ok, bytes=%ld\n", size);
-  } else {
-    std::fprintf(stderr, "corsixth-vita: probe fopen(relative) FAILED (errno=%d)\n", errno);
-  }
-  std::fprintf(stderr, "corsixth-vita: probe fopen(app0:) start\n");
-  if (std::FILE* probe = std::fopen("app0:/game/CorsixTH.lua", "rb")) {
-    std::fseek(probe, 0, SEEK_END);
-    long size = std::ftell(probe);
-    std::fclose(probe);
-    std::fprintf(stderr, "corsixth-vita: probe fopen(app0:) ok, bytes=%ld\n", size);
-  } else {
-    std::fprintf(stderr, "corsixth-vita: probe fopen(app0:) FAILED (errno=%d)\n", errno);
+  if (fd >= 0) {
+    long size = (long)sceIoLseek(fd, 0, SCE_SEEK_END);
+    std::fprintf(stderr, "corsixth-vita: probe sceIo size=%ld\n", size);
+    sceIoClose(fd);
   }
   std::fprintf(stderr, "corsixth-vita: probes done\n");
 }
