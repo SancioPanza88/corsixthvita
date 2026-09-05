@@ -30,6 +30,17 @@ jobs:
           vdpm install sdl2_image || echo "NOTE: no vdpm package 'sdl2_image'"
           vdpm install freetype || echo "NOTE: no vdpm package 'freetype'"
           vdpm install libpng || vdpm install png || echo "NOTE: no vdpm png package"
+          # Transitive static deps of sdl2_mixer 2.8.2 / freetype (vdpm usually
+          # pulls these automatically; install explicitly so a resolver change
+          # can never silently drop them). Each line tolerates renames.
+          vdpm install libvorbis || vdpm install vorbis || echo "NOTE: no vdpm vorbis package"
+          vdpm install libogg || vdpm install ogg || echo "NOTE: no vdpm ogg package"
+          vdpm install opusfile || echo "NOTE: no vdpm package 'opusfile'"
+          vdpm install opus || echo "NOTE: no vdpm package 'opus'"
+          vdpm install libmodplug || vdpm install modplug || echo "NOTE: no vdpm modplug package"
+          vdpm install libxmp-lite || vdpm install libxmp || vdpm install xmp || echo "NOTE: no vdpm xmp package"
+          vdpm install flac || echo "NOTE: no vdpm package 'flac'"
+          vdpm install bzip2 || vdpm install bz2 || echo "NOTE: no vdpm bzip2 package"
           vdpm install lua || echo "NOTE: no vdpm package 'lua'"
           bash vita/build-lua.sh
           echo "--- SDK include snapshot ---"
@@ -46,6 +57,10 @@ jobs:
           python3 --version || echo "NOTE: no python3 in container"
           echo "--- dep snapshot ---"
           ls "$VITASDK/arm-vita-eabi/lib" | grep -iE 'SDL2|lua|png|freetype|libz|mixer' || true
+          echo "--- mixer/freetype transitive libs ---"
+          ls "$VITASDK/arm-vita-eabi/lib" | grep -iE 'vorbis|ogg|opus|modplug|xmp|FLAC|flac|bz2|mpg123|mikmod' || echo "NOTE: no mixer transitive libs matched"
+          echo "--- Sce stubs ---"
+          ls "$VITASDK/arm-vita-eabi/lib" | grep -E 'libSce(Gxm|Display|Ctrl|Audio|CommonDialog|Ime|MsgDialog|Touch|Hid|Motion|Sysmodule|AppMgr|AppUtil|Power|Processmgr|Iofilemgr)' || true
           ls "$VITASDK/arm-vita-eabi/include" | grep -iE 'SDL|lua|png|freetype|zlib' || true
           ls "$VITASDK/arm-vita-eabi/lib/libSDL2main"* 2>/dev/null || echo "NOTE: no libSDL2main in SDK lib"
           mkdir -p build
@@ -57,7 +72,14 @@ jobs:
         run: |
           export VITASDK=/usr/local/vitasdk
           export PATH=$VITASDK/bin:$PATH
-          cmake --build build -j"$(nproc)"
+          cmake --build build -j"$(nproc)" || {
+            rc=$?
+            echo "--- link.txt (CorsixTH) ---"
+            cat build/_deps/corsixth_upstream-build/CorsixTH/CMakeFiles/CorsixTH.dir/link.txt 2>/dev/null || true
+            echo "--- link.txt (top-level) ---"
+            find build -name link.txt | head -20
+            exit $rc
+          }
 
       - name: Package VPK
         run: |

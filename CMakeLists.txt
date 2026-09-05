@@ -121,11 +121,44 @@ string(REPLACE ";" "\n" _art_text "${VITA_ART_PAIRS}")
 file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/vita_art.txt" CONTENT "${_art_text}\n")
 
 # libSDL2.a / libSDL2_mixer.a come in by plain path (upstream uses legacy
-# find modules), so their Sce dependencies do not propagate as INTERFACE
-# usage requirements the way SDL2::SDL2 would. List the set SDL itself
-# needs on Vita explicitly (mirrors SDL's EXTRA_LIBS for the VITA target).
+# find modules), so their dependencies do not propagate as INTERFACE
+# usage requirements the way SDL2::SDL2 would. Upstream also links mixer
+# AFTER SDL, which breaks static linking (mixer calls SDL_LoadWAV_RW etc.).
+# List the full static closure explicitly (matches sdl2_mixer 2.8.2 + freetype
+# vdpm recipes) and wrap it in a linker group so order/cycles
+# (mixer<->SDL, vorbisfile<->vorbis, etc.) cannot break the link.
 # No libm: newlib keeps math in libc and SDL deliberately skips it on Vita.
+set(_vita_libdir "$ENV{VITASDK}/arm-vita-eabi/lib")
+find_library(VITA_SDL2_LIB NAMES SDL2 PATHS "${_vita_libdir}" NO_DEFAULT_PATH)
+find_library(VITA_SDL2MIXER_LIB NAMES SDL2_mixer PATHS "${_vita_libdir}" NO_DEFAULT_PATH)
+find_library(VITA_VORBISFILE_LIB NAMES vorbisfile PATHS "${_vita_libdir}" NO_DEFAULT_PATH)
+find_library(VITA_VORBIS_LIB NAMES vorbis PATHS "${_vita_libdir}" NO_DEFAULT_PATH)
+find_library(VITA_OGG_LIB NAMES ogg PATHS "${_vita_libdir}" NO_DEFAULT_PATH)
+find_library(VITA_OPUSFILE_LIB NAMES opusfile PATHS "${_vita_libdir}" NO_DEFAULT_PATH)
+find_library(VITA_OPUS_LIB NAMES opus PATHS "${_vita_libdir}" NO_DEFAULT_PATH)
+find_library(VITA_MODPLUG_LIB NAMES modplug PATHS "${_vita_libdir}" NO_DEFAULT_PATH)
+find_library(VITA_XMP_LIB NAMES xmp-lite xmp PATHS "${_vita_libdir}" NO_DEFAULT_PATH)
+find_library(VITA_FLAC_LIB NAMES FLAC PATHS "${_vita_libdir}" NO_DEFAULT_PATH)
+find_library(VITA_BZ2_LIB NAMES bz2 PATHS "${_vita_libdir}" NO_DEFAULT_PATH)
+foreach(_vita_req VITA_SDL2_LIB VITA_SDL2MIXER_LIB VITA_VORBISFILE_LIB VITA_VORBIS_LIB VITA_OGG_LIB VITA_OPUSFILE_LIB VITA_OPUS_LIB VITA_MODPLUG_LIB VITA_XMP_LIB VITA_FLAC_LIB VITA_BZ2_LIB)
+  if(NOT ${_vita_req})
+    message(FATAL_ERROR "Vita link closure: ${_vita_req} not found in ${_vita_libdir} - check vdpm installs in .github/workflows/build.yml")
+  endif()
+endforeach()
+
 target_link_libraries(CorsixTH PRIVATE
+  -Wl,--start-group
+  ${VITA_SDL2MIXER_LIB}
+  ${VITA_VORBISFILE_LIB}
+  ${VITA_VORBIS_LIB}
+  ${VITA_OGG_LIB}
+  ${VITA_OPUSFILE_LIB}
+  ${VITA_OPUS_LIB}
+  ${VITA_MODPLUG_LIB}
+  ${VITA_XMP_LIB}
+  ${VITA_FLAC_LIB}
+  ${VITA_BZ2_LIB}
+  ${VITA_SDL2_LIB}
   SceGxm_stub
   SceDisplay_stub
   SceCtrl_stub
@@ -136,11 +169,13 @@ target_link_libraries(CorsixTH PRIVATE
   SceSysmodule_stub
   SceIofilemgr_stub
   SceCommonDialog_stub
+  SceIme_stub
   SceTouch_stub
   SceHid_stub
   SceMotion_stub
   ScePower_stub
   SceProcessmgr_stub
+  -Wl,--end-group
 )
 
 # Packaging runs as an explicit second build step (see workflow), strictly
