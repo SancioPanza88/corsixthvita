@@ -3,13 +3,18 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <psp2/io/dirent.h>
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
+
+struct _reent;
 
 namespace corsix_vita {
 
@@ -66,6 +71,62 @@ __attribute__((constructor)) static void vita_bringup() {
 }
 
 } // namespace corsix_vita
+
+// Vita newlib's _stat_r/_fstat_r hang on app0: paths (verified on hardware:
+// fopen() and std::filesystem::status() freeze with no error while open(),
+// sceIoOpen() and sceIoLseek() work). Everything file-shaped - Lua loadfile,
+// persist, lfs, SDL, freetype - is built on those two, so override them with
+// implementations using only the proven primitives. Static linking prefers
+// these definitions over libc's. st_mode/st_size are accurate for stat();
+// fstat() gets a plausible regular-file answer, which is all fopen needs.
+extern "C" {
+int _stat_r(struct _reent* reent, const char* path, struct stat* buf) {
+  (void)reent;
+  if (!path || !buf) {
+    errno = EINVAL;
+    return -1;
+  }
+  SceUID fd = sceIoOpen(path, SCE_O_RDONLY, 0777);
+  if (fd >= 0) {
+    SceOff end = sceIoLseek(fd, 0, SCE_SEEK_END);
+    sceIoClose(fd);
+    if (end < 0) {
+      errno = EIO;
+      return -1;
+    }
+    std::memset(buf, 0, sizeof(*buf));
+    buf->st_mode = S_IFREG | 0444;
+    buf->st_nlink = 1;
+    buf->st_size = (off_t)end;
+    buf->st_blksize = 4096;
+    return 0;
+  }
+  SceUID dir = sceIoDopen(path);
+  if (dir >= 0) {
+    sceIoDclose(dir);
+    std::memset(buf, 0, sizeof(*buf));
+    buf->st_mode = S_IFDIR | 0555;
+    buf->st_nlink = 1;
+    return 0;
+  }
+  errno = ENOENT;
+  return -1;
+}
+int _fstat_r(struct _reent* reent, int fd, struct stat* buf) {
+  (void)reent;
+  (void)fd;
+  if (!buf) {
+    errno = EINVAL;
+    return -1;
+  }
+  std::memset(buf, 0, sizeof(*buf));
+  buf->st_mode = S_IFREG | 0644;
+  buf->st_nlink = 1;
+  buf->st_size = 0;
+  buf->st_blksize = 4096;
+  return 0;
+}
+} // extern "C"
 
 // Vita newlib provides no symlink(2)/readlink(2); luafilesystem references
 // both (dir locking, make_link, symlinkattributes). The game never uses
