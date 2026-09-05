@@ -35,18 +35,32 @@ __attribute__((constructor)) static void vita_bringup() {
   std::setvbuf(stdout, nullptr, _IONBF, 0);
   std::setvbuf(stderr, nullptr, _IONBF, 0);
   std::fprintf(stderr, "corsixth-vita: bringup build=%s, entering main\n", VITA_BUILD_TAG);
-  // Decisive pre-main probe: can we actually READ from app0:? If this line
-  // never appears, the hang is below us (kernel/fs). If size is -1, the
-  // bundled game/ data is missing from the VPK.
-  std::fprintf(stderr, "corsixth-vita: app0 probe start\n");
+  // app0: access matrix: stdio+fopen froze on the previous build without a
+  // clean failure, so try every access method and log each result. Whatever
+  // works here decides how the interpreter path is addressed.
+  std::fprintf(stderr, "corsixth-vita: probe sceIoOpen(app0:) start\n");
+  SceUID fd = sceIoOpen("app0:/game/CorsixTH.lua", SCE_O_RDONLY, 0777);
+  std::fprintf(stderr, "corsixth-vita: probe sceIoOpen(app0:) fd=%d\n", (int)fd);
+  if (fd >= 0) sceIoClose(fd);
+  std::fprintf(stderr, "corsixth-vita: probe fopen(relative) start\n");
+  if (std::FILE* rel = std::fopen("game/CorsixTH.lua", "rb")) {
+    std::fseek(rel, 0, SEEK_END);
+    long size = std::ftell(rel);
+    std::fclose(rel);
+    std::fprintf(stderr, "corsixth-vita: probe fopen(relative) ok, bytes=%ld\n", size);
+  } else {
+    std::fprintf(stderr, "corsixth-vita: probe fopen(relative) FAILED (errno=%d)\n", errno);
+  }
+  std::fprintf(stderr, "corsixth-vita: probe fopen(app0:) start\n");
   if (std::FILE* probe = std::fopen("app0:/game/CorsixTH.lua", "rb")) {
     std::fseek(probe, 0, SEEK_END);
     long size = std::ftell(probe);
     std::fclose(probe);
-    std::fprintf(stderr, "corsixth-vita: app0 probe ok, CorsixTH.lua=%ld bytes\n", size);
+    std::fprintf(stderr, "corsixth-vita: probe fopen(app0:) ok, bytes=%ld\n", size);
   } else {
-    std::fprintf(stderr, "corsixth-vita: app0 probe FAILED (errno=%d)\n", errno);
+    std::fprintf(stderr, "corsixth-vita: probe fopen(app0:) FAILED (errno=%d)\n", errno);
   }
+  std::fprintf(stderr, "corsixth-vita: probes done\n");
 }
 
 } // namespace corsix_vita

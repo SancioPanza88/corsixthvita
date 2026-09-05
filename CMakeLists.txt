@@ -22,15 +22,20 @@ include("$ENV{VITASDK}/share/vita.cmake" REQUIRED)
 
 # Build tag baked into the boot log so a stderr.txt always tells us exactly
 # which binary produced it (ends "which VPK is installed" disputes).
-find_package(Git QUIET)
-if(GIT_FOUND)
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    OUTPUT_VARIABLE VITA_BUILD_TAG
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
-  )
+if(DEFINED ENV{GITHUB_SHA})
+  string(SUBSTRING "$ENV{GITHUB_SHA}" 0 7 VITA_BUILD_TAG)
+endif()
+if(NOT VITA_BUILD_TAG)
+  find_package(Git QUIET)
+  if(GIT_FOUND)
+    execute_process(
+      COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+      OUTPUT_VARIABLE VITA_BUILD_TAG
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+    )
+  endif()
 endif()
 if(NOT VITA_BUILD_TAG)
   set(VITA_BUILD_TAG "unknown")
