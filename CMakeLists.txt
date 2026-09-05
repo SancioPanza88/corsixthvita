@@ -74,13 +74,26 @@ target_link_libraries(CorsixTH PRIVATE vita_platform)
 
 # Placeholder LiveArea art is generated at configure time (see
 # vita/gen_livearea.py) so the repo stays text-only. Real art lands later.
+# If no python3 is around, package without custom art instead of failing
+# the whole configure.
 set(VITA_LIVEAREA_DIR "${CMAKE_BINARY_DIR}/sce_sys")
-execute_process(
-  COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/vita/gen_livearea.py" "${VITA_LIVEAREA_DIR}"
-  RESULT_VARIABLE _livearea_rc
-)
-if(NOT _livearea_rc EQUAL 0)
-  message(FATAL_ERROR "gen_livearea.py failed - python3 with stdlib zlib is required.")
+find_program(VITA_PYTHON python3)
+set(VITA_LIVEAREA_FILES "")
+if(VITA_PYTHON)
+  execute_process(
+    COMMAND "${VITA_PYTHON}" "${CMAKE_CURRENT_SOURCE_DIR}/vita/gen_livearea.py" "${VITA_LIVEAREA_DIR}"
+    RESULT_VARIABLE _livearea_rc
+  )
+endif()
+if(VITA_PYTHON AND _livearea_rc EQUAL 0)
+  set(VITA_LIVEAREA_FILES
+    FILE "${VITA_LIVEAREA_DIR}/icon0.png" sce_sys/icon0.png
+    FILE "${VITA_LIVEAREA_DIR}/livearea/contents/bg.png" sce_sys/livearea/contents/bg.png
+    FILE "${VITA_LIVEAREA_DIR}/livearea/contents/startup.png" sce_sys/livearea/contents/startup.png
+    FILE "${CMAKE_CURRENT_SOURCE_DIR}/vita/sce_sys/livearea/contents/template.xml" sce_sys/livearea/contents/template.xml
+  )
+else()
+  message(WARNING "LiveArea art skipped (no python3 or generator failed) - packaging with defaults.")
 endif()
 
 vita_create_self(eboot.bin CorsixTH UNSAFE)
@@ -88,8 +101,5 @@ vita_create_self(eboot.bin CorsixTH UNSAFE)
 vita_create_vpk(corsixth.vpk ${VITA_TITLEID} eboot.bin
   VERSION ${VITA_VERSION}
   NAME ${VITA_APP_NAME}
-  FILE "${VITA_LIVEAREA_DIR}/icon0.png" sce_sys/icon0.png
-  FILE "${VITA_LIVEAREA_DIR}/livearea/contents/bg.png" sce_sys/livearea/contents/bg.png
-  FILE "${VITA_LIVEAREA_DIR}/livearea/contents/startup.png" sce_sys/livearea/contents/startup.png
-  FILE "${CMAKE_CURRENT_SOURCE_DIR}/vita/sce_sys/livearea/contents/template.xml" sce_sys/livearea/contents/template.xml
+  ${VITA_LIVEAREA_FILES}
 )

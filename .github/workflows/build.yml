@@ -37,10 +37,21 @@ jobs:
 
       - name: Configure
         run: |
+          set -x
           export VITASDK=/usr/local/vitasdk
           export PATH=$VITASDK/bin:$PATH
+          # Upstream ships its own FindSDL2.cmake which honours $SDLDIR.
+          export SDLDIR=$VITASDK/arm-vita-eabi
+          cmake --version | head -1
+          python3 --version || echo "NOTE: no python3 in container"
+          echo "--- dep snapshot ---"
+          ls "$VITASDK/arm-vita-eabi/lib" | grep -iE 'SDL2|lua|png|freetype|libz|mixer' || true
+          ls "$VITASDK/arm-vita-eabi/include" | grep -iE 'SDL|lua|png|freetype|zlib' || true
+          ls "$VITASDK/arm-vita-eabi/lib/libSDL2main"* 2>/dev/null || echo "NOTE: no libSDL2main in SDK lib"
           mkdir -p build
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+            -DLUA_INCLUDE_DIR="$VITASDK/arm-vita-eabi/include" \
+            -DLUA_LIBRARY="$VITASDK/arm-vita-eabi/lib/liblua.a"
 
       - name: Build
         run: |
