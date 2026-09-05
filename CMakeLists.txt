@@ -82,11 +82,11 @@ if(NOT corsixth_upstream_POPULATED)
   file(READ "${_vita_lists}" _vita_text)
   string(REPLACE
     [==[set(CORSIX_TH_DATADIR ${CMAKE_INSTALL_DATADIR}/corsix-th)]==]
-    [==[set(CORSIX_TH_DATADIR "app0:/game")]# VITA_PATCHED_DATADIR]==]
+    [==[set(CORSIX_TH_DATADIR "app0:/game") # VITA_PATCHED_DATADIR]==]
     _vita_text "${_vita_text}")
   string(REPLACE
     [==[set(CORSIX_TH_INTERPRETER_PATH ${CMAKE_INSTALL_FULL_DATADIR}/corsix-th/${CORSIX_TH_INTERPRETER_NAME})]==]
-    [==[set(CORSIX_TH_INTERPRETER_PATH "app0:/game/${CORSIX_TH_INTERPRETER_NAME}")]# VITA_PATCHED_INTERPRETER]==]
+    [==[set(CORSIX_TH_INTERPRETER_PATH "app0:/game/${CORSIX_TH_INTERPRETER_NAME}") # VITA_PATCHED_INTERPRETER]==]
     _vita_text "${_vita_text}")
   if(NOT _vita_text MATCHES "VITA_PATCHED_INTERPRETER")
     message(FATAL_ERROR "Upstream CorsixTH/CMakeLists layout changed - revisit the app0:/game datadir fix.")
