@@ -92,6 +92,32 @@ if(NOT corsixth_upstream_POPULATED)
     message(FATAL_ERROR "Upstream CorsixTH/CMakeLists layout changed - revisit the app0:/game datadir fix.")
   endif()
   file(WRITE "${_vita_lists}" "${_vita_text}")
+  # Temporary bring-up tracing: stderr goes to ux0:data/corsixth/stderr.txt
+  # (see vita_platform.cpp), so a few markers here tell us exactly where a
+  # silent hang happens. Remove once the game reaches the menu.
+  # Revisit on tag bump: the guard below fails loudly if upstream moves it.
+  set(_vita_main "${corsixth_upstream_SOURCE_DIR}/CorsixTH/SrcUnshared/main.cpp")
+  file(READ "${_vita_main}" _vita_main_text)
+  string(REPLACE
+    [==[lua_atpanic(L.get(), lua_panic);]==]
+    [==[lua_atpanic(L.get(), lua_panic);
+    std::fprintf(stderr, "vita: lua state opened\n"); // VITA_TRACE_STATE]==]
+    _vita_main_text "${_vita_main_text}")
+  string(REPLACE
+    [==[if (lua_pcall(L.get(), argc, 0, 1) != 0) {]==]
+    [==[std::fprintf(stderr, "vita: calling lua_init\n"); // VITA_TRACE_INIT
+    if (lua_pcall(L.get(), argc, 0, 1) != 0) {]==]
+    _vita_main_text "${_vita_main_text}")
+  string(REPLACE
+    [==[mainloop(L.get());]==]
+    [==[std::fprintf(stderr, "vita: entering mainloop\n"); // VITA_TRACE_LOOP
+    mainloop(L.get());
+    std::fprintf(stderr, "vita: mainloop exited\n");]==]
+    _vita_main_text "${_vita_main_text}")
+  if(NOT _vita_main_text MATCHES "VITA_TRACE_LOOP")
+    message(FATAL_ERROR "Upstream SrcUnshared/main.cpp layout changed - revisit the vita trace markers.")
+  endif()
+  file(WRITE "${_vita_main}" "${_vita_main_text}")
 endif()
 add_subdirectory("${corsixth_upstream_SOURCE_DIR}" "${corsixth_upstream_BINARY_DIR}")
 
