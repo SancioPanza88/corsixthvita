@@ -19,7 +19,8 @@ jobs:
           set -x
           export VITASDK=/usr/local/vitasdk
           export PATH=$VITASDK/bin:$PATH
-          vdpm update || echo "NOTE: vdpm update failed, continuing"
+          # vdpm has no 'update' subcommand; the image already ships a
+          # current database, so go straight to installing.
           # Core set. Each line tolerates a missing package name so a vdpm
           # rename fails loudly at configure time instead of here with a
           # cryptic solver error. Adjust names if vdpm complains.

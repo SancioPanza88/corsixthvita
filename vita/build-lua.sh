@@ -29,9 +29,10 @@ curl -L -o lua.tar.gz "https://www.lua.org/ftp/lua-$LUA_VER.tar.gz"
 tar xzf lua.tar.gz
 cd "lua-$LUA_VER"
 
-# Plain ANSI target; upstream CorsixTH wants Lua 5.4.x and only uses the
-# portable subset through lauxlib. -Os keeps the text segment small.
-make a \
+# Stock "generic" target: plain static liblua.a with no platform extras
+# (no dlopen/readline). Upstream only uses the portable lauxlib subset.
+# -Os keeps the text segment small.
+make generic \
   CC="$CC_BIN" \
   AR="$AR_BIN rcu" \
   RANLIB="$VITASDK/bin/arm-vita-eabi-ranlib" \
