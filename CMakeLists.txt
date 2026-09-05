@@ -73,6 +73,25 @@ if(NOT corsixth_upstream_POPULATED)
     message(FATAL_ERROR "Upstream Src/CMakeLists layout changed - revisit the config.h.in path fix.")
   endif()
   file(WRITE "${_cfg_lists}" "${_cfg_text}")
+  # Upstream bakes CORSIX_TH_INTERPRETER_PATH from the desktop install prefix
+  # (/usr/local/share/...), which does not exist on Vita, so the game would
+  # exit(1) right after the LiveArea splash. Point it at the bundled copy
+  # instead (packed under game/ by the rules further below).
+  # Revisit on tag bump: the guard below fails loudly if upstream moves it.
+  set(_vita_lists "${corsixth_upstream_SOURCE_DIR}/CorsixTH/CMakeLists.txt")
+  file(READ "${_vita_lists}" _vita_text)
+  string(REPLACE
+    [==[set(CORSIX_TH_DATADIR ${CMAKE_INSTALL_DATADIR}/corsix-th)]==]
+    [==[set(CORSIX_TH_DATADIR "app0:/game")]# VITA_PATCHED_DATADIR]==]
+    _vita_text "${_vita_text}")
+  string(REPLACE
+    [==[set(CORSIX_TH_INTERPRETER_PATH ${CMAKE_INSTALL_FULL_DATADIR}/corsix-th/${CORSIX_TH_INTERPRETER_NAME})]==]
+    [==[set(CORSIX_TH_INTERPRETER_PATH "app0:/game/${CORSIX_TH_INTERPRETER_NAME}")]# VITA_PATCHED_INTERPRETER]==]
+    _vita_text "${_vita_text}")
+  if(NOT _vita_text MATCHES "VITA_PATCHED_INTERPRETER")
+    message(FATAL_ERROR "Upstream CorsixTH/CMakeLists layout changed - revisit the app0:/game datadir fix.")
+  endif()
+  file(WRITE "${_vita_lists}" "${_vita_text}")
 endif()
 add_subdirectory("${corsixth_upstream_SOURCE_DIR}" "${corsixth_upstream_BINARY_DIR}")
 
@@ -93,6 +112,37 @@ if(NOT TARGET CorsixTH)
   message(FATAL_ERROR "Upstream target 'CorsixTH' not found - check CORSIXTH_TAG layout.")
 endif()
 target_link_libraries(CorsixTH PRIVATE vita_platform)
+
+# Upstream only preloads lfs/lpeg when CORSIX_TH_LINK_LUA_MODULES is set,
+# which it limits to vcpkg builds - everywhere else they load via require at
+# runtime (.so), which cannot work on Vita. Build both from source against
+# our Lua 5.4 headers and flip the switch: config.h emits it as a commented
+# `#undef` when OFF, so this -D wins without touching upstream sources.
+FetchContent_Declare(
+  vita_lfs
+  URL "https://github.com/lunarmodules/luafilesystem/archive/refs/tags/v1_8_0.tar.gz"
+  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_Declare(
+  vita_lpeg
+  URL "http://www.inf.puc-rio.br/~roberto/lpeg/lpeg-1.1.0.tar.gz"
+  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_GetProperties(vita_lfs)
+if(NOT vita_lfs_POPULATED)
+  FetchContent_Populate(vita_lfs)
+endif()
+FetchContent_GetProperties(vita_lpeg)
+if(NOT vita_lpeg_POPULATED)
+  FetchContent_Populate(vita_lpeg)
+endif()
+add_library(vita_luamods STATIC
+  "${vita_lfs_SOURCE_DIR}/src/lfs.c"
+  "${vita_lpeg_SOURCE_DIR}/lpeg.c"
+)
+target_include_directories(vita_luamods PRIVATE "$ENV{VITASDK}/arm-vita-eabi/include")
+target_compile_definitions(CorsixTH PRIVATE CORSIX_TH_LINK_LUA_MODULES)
+target_link_libraries(CorsixTH PRIVATE vita_luamods)
 
 # Placeholder LiveArea art is generated at configure time (see
 # vita/gen_livearea.py) so the repo stays text-only. Real art lands later.
@@ -118,6 +168,19 @@ if(VITA_PYTHON AND _livearea_rc EQUAL 0)
 else()
   message(WARNING "LiveArea art skipped (no python3 or generator failed) - packaging with defaults.")
 endif()
+# Upstream game data (interpreter + scripts + art) bundled into the VPK
+# under game/ so app0:/game/CorsixTH.lua (see patch above) resolves.
+# Original Theme Hospital data stays user-provided in ux0:data/corsixth.
+set(VITA_GAME_DIR "${CMAKE_BINARY_DIR}/game")
+file(COPY "${corsixth_upstream_SOURCE_DIR}/CorsixTH/CorsixTH.lua" DESTINATION "${VITA_GAME_DIR}")
+foreach(_vita_data_dir Lua Bitmap Campaigns Levels)
+  file(COPY "${corsixth_upstream_SOURCE_DIR}/CorsixTH/${_vita_data_dir}" DESTINATION "${VITA_GAME_DIR}")
+endforeach()
+file(GLOB_RECURSE _vita_game_files LIST_DIRECTORIES FALSE "${VITA_GAME_DIR}/*")
+foreach(_vita_game_file IN LISTS _vita_game_files)
+  file(RELATIVE_PATH _vita_game_rel "${VITA_GAME_DIR}" "${_vita_game_file}")
+  list(APPEND VITA_ART_PAIRS "${VITA_GAME_DIR}/${_vita_game_rel}=game/${_vita_game_rel}")
+endforeach()
 string(REPLACE ";" "\n" _art_text "${VITA_ART_PAIRS}")
 file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/vita_art.txt" CONTENT "${_art_text}\n")
 

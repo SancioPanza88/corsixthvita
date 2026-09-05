@@ -50,8 +50,9 @@ Touchscreen stays the primary pointer; buttons are a fallback.
 
 ## Bring-up checklist
 
-1. [ ] CI produces `corsixth.vpk` (this repo's Actions tab).
-2. [ ] Installs via VitaShell, boots to wizard/menu (no data files yet).
+1. [x] CI produces `corsixth.vpk` (this repo's Actions tab).
+2. [ ] Installs via VitaShell, boots to wizard/menu (interpreter + Lua data
+   now bundled under `game/` in the VPK, `lfs`/`lpeg` statically linked).
 3. [ ] With GOG data in place: new hospital builds, staff hired, patients flow.
 4. [ ] Touch controls verified on hardware; button fallback mapped.
 5. [ ] Static lpeg/lfs; save/load round-trip; overclock-off performance pass.
