@@ -1,5 +1,9 @@
 #include "vita_platform.h"
 
+#include <errno.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
 
@@ -25,3 +29,23 @@ __attribute__((constructor)) static void vita_bringup() {
 }
 
 } // namespace corsix_vita
+
+// Vita newlib provides no symlink(2)/readlink(2); luafilesystem references
+// both (dir locking, make_link, symlinkattributes). The game never uses
+// those calls - it needs attributes/dir/mkdir/chdir - so stub them to fail
+// cleanly instead of breaking the link.
+extern "C" {
+int symlink(const char* target, const char* linkpath) {
+  (void)target;
+  (void)linkpath;
+  errno = ENOSYS;
+  return -1;
+}
+ssize_t readlink(const char* path, char* buf, size_t bufsiz) {
+  (void)path;
+  (void)buf;
+  (void)bufsiz;
+  errno = ENOSYS;
+  return -1;
+}
+} // extern "C"
