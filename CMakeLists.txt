@@ -154,6 +154,38 @@ if(NOT corsixth_upstream_POPULATED)
     message(FATAL_ERROR "Upstream SrcUnshared/main.cpp layout changed - revisit the vita trace markers.")
   endif()
   file(WRITE "${_vita_main}" "${_vita_main_text}")
+  # std::filesystem::status() hangs/throws on Vita device paths (app0:/ux0:),
+  # which freezes the interpreter search with zero output. Probe readability
+  # with a raw POSIX open() instead - proven working on hardware. The only
+  # caller checks the bundled interpreter file, so treating readable dirs as
+  # existing is harmless.
+  # Revisit on tag bump: the guard below fails loudly if upstream moves it.
+  set(_vita_src_main "${corsixth_upstream_SOURCE_DIR}/CorsixTH/Src/main.cpp")
+  file(READ "${_vita_src_main}" _vita_src_main_text)
+  string(REPLACE
+    [==[#include <filesystem>]==]
+    [==[#include <filesystem>
+#include <fcntl.h> // VITA_POSIX_IO
+#include <unistd.h>]==]
+    _vita_src_main_text "${_vita_src_main_text}")
+  string(REPLACE
+    [==[bool file_exists(const std::filesystem::path& f) {
+  const std::filesystem::file_status st = std::filesystem::status(f);
+  return std::filesystem::exists(st) && !std::filesystem::is_directory(st);
+}]==]
+    [==[bool file_exists(const std::filesystem::path& f) {
+  // VITA_FILE_EXISTS_PATCH: no std::filesystem on Vita device paths.
+  const std::string path = f.string();
+  const int fd = ::open(path.c_str(), O_RDONLY);
+  if (fd < 0) return false;
+  ::close(fd);
+  return true;
+}]==]
+    _vita_src_main_text "${_vita_src_main_text}")
+  if(NOT _vita_src_main_text MATCHES "VITA_FILE_EXISTS_PATCH")
+    message(FATAL_ERROR "Upstream Src/main.cpp layout changed - revisit the vita file_exists fix.")
+  endif()
+  file(WRITE "${_vita_src_main}" "${_vita_src_main_text}")
 endif()
 add_subdirectory("${corsixth_upstream_SOURCE_DIR}" "${corsixth_upstream_BINARY_DIR}")
 
