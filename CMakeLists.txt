@@ -217,6 +217,46 @@ file(COPY "${corsixth_upstream_SOURCE_DIR}/CorsixTH/CorsixTH.lua" DESTINATION "$
 foreach(_vita_data_dir Lua Bitmap Campaigns Levels)
   file(COPY "${corsixth_upstream_SOURCE_DIR}/CorsixTH/${_vita_data_dir}" DESTINATION "${VITA_GAME_DIR}")
 endforeach()
+# Temporary bring-up tracing inside the bundled interpreter copy (stdout goes
+# to ux0:data/corsixth/stdout.txt). Shows how far CorsixTH.lua gets before a
+# silent hang. Remove once the game reaches the menu. Bracket args below span
+# real newlines on purpose.
+file(READ "${VITA_GAME_DIR}/CorsixTH.lua" _vita_interp)
+string(REPLACE
+  [==[package.path = code_dir .. "?.lua;" .. code_dir .. "?/init.lua;" .. package.path]==]
+  [==[package.path = code_dir .. "?.lua;" .. code_dir .. "?/init.lua;" .. package.path
+print("vita: interpreter running, code_dir=" .. code_dir) -- VITA_LUA_TRACE]==]
+  _vita_interp "${_vita_interp}")
+string(REPLACE
+  [==[corsixth.require("utility")]==]
+  [==[print("vita: require utility") -- VITA_LUA_TRACE
+corsixth.require("utility")]==]
+  _vita_interp "${_vita_interp}")
+string(REPLACE
+  [==[corsixth.require("class")]==]
+  [==[print("vita: require class") -- VITA_LUA_TRACE
+corsixth.require("class")]==]
+  _vita_interp "${_vita_interp}")
+string(REPLACE
+  [==[corsixth.require("app")]==]
+  [==[print("vita: require app") -- VITA_LUA_TRACE
+corsixth.require("app")]==]
+  _vita_interp "${_vita_interp}")
+string(REPLACE
+  [==[TheApp = App()]==]
+  [==[print("vita: creating App") -- VITA_LUA_TRACE
+TheApp = App()]==]
+  _vita_interp "${_vita_interp}")
+string(REPLACE
+  [==[assert(TheApp:init())]==]
+  [==[print("vita: calling App:init") -- VITA_LUA_TRACE
+assert(TheApp:init())
+print("vita: App:init returned") -- VITA_LUA_TRACE]==]
+  _vita_interp "${_vita_interp}")
+if(NOT _vita_interp MATCHES "App:init returned")
+  message(FATAL_ERROR "Bundled CorsixTH.lua layout changed - revisit the vita lua trace markers.")
+endif()
+file(WRITE "${VITA_GAME_DIR}/CorsixTH.lua" "${_vita_interp}")
 file(GLOB_RECURSE _vita_game_files LIST_DIRECTORIES FALSE "${VITA_GAME_DIR}/*")
 foreach(_vita_game_file IN LISTS _vita_game_files)
   file(RELATIVE_PATH _vita_game_rel "${VITA_GAME_DIR}" "${_vita_game_file}")
