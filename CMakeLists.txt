@@ -137,19 +137,6 @@ if(NOT corsixth_upstream_POPULATED)
     mainloop(L.get());
     std::fprintf(stderr, "vita: mainloop exited\n");]==]
     _vita_main_text "${_vita_main_text}")
-  string(REPLACE
-    [==[auto scriptFilePath = search_script_file(L);]==]
-    [==[auto scriptFilePath = search_script_file(L);
-  std::fprintf(stderr, "vita: interpreter path='%s'\n", scriptFilePath.c_str()); // VITA_TRACE_PATH]==]
-    _vita_main_text "${_vita_main_text}")
-  string(REPLACE
-    [==[lua_call(L, 1, 2);
-  lua_call(L, 2, 1);]==]
-    [==[lua_call(L, 1, 2);
-  std::fprintf(stderr, "vita: loadfile done\n"); // VITA_TRACE_LOAD
-  lua_call(L, 2, 1);
-  std::fprintf(stderr, "vita: interpreter chunk returned\n");]==]
-    _vita_main_text "${_vita_main_text}")
   if(NOT _vita_main_text MATCHES "VITA_TRACE_LOOP")
     message(FATAL_ERROR "Upstream SrcUnshared/main.cpp layout changed - revisit the vita trace markers.")
   endif()
@@ -181,7 +168,20 @@ if(NOT corsixth_upstream_POPULATED)
     [==[std::fprintf(stderr, "vita: entering search\n"); // VITA_TRACE_SEARCH
   auto scriptFilePath = search_script_file(L);]==]
     _vita_noeval_text "${_vita_noeval_text}")
-  if(NOT _vita_noeval_text MATCHES "VITA_TRACE_SEARCH")
+  string(REPLACE
+    [==[lua_pushstring(L, scriptFilePath.c_str());
+
+  lua_call(L, 1, 2);
+  lua_call(L, 2, 1);]==]
+    [==[lua_pushstring(L, scriptFilePath.c_str());
+  std::fprintf(stderr, "vita: interpreter path='%s'\n", scriptFilePath.c_str()); // VITA_TRACE_PATH
+  std::fprintf(stderr, "vita: loadfile start\n");
+  lua_call(L, 1, 2);
+  std::fprintf(stderr, "vita: loadfile done\n"); // VITA_TRACE_LOAD
+  lua_call(L, 2, 1);
+  std::fprintf(stderr, "vita: interpreter chunk returned\n");]==]
+    _vita_noeval_text "${_vita_noeval_text}")
+  if(NOT _vita_noeval_text MATCHES "VITA_TRACE_LOAD")
     message(FATAL_ERROR "Upstream Src/main.cpp layout changed - revisit the vita noeval trace markers.")
   endif()
   file(WRITE "${_vita_src_main}" "${_vita_noeval_text}")
