@@ -56,6 +56,12 @@ __attribute__((constructor)) static void vita_bringup() {
     std::fprintf(stderr, "corsixth-vita: probe sceIo size=%ld\n", size);
     sceIoClose(fd);
   }
+  // Absolute-device paths work but cwd-dependent calls (fopen, status) freeze,
+  // which smells like an unset working directory. Pin it to app0:/ and log it;
+  // if this line never appears, chdir itself is the hang.
+  std::fprintf(stderr, "corsixth-vita: chdir(app0:/) start\n");
+  int chdir_rc = chdir("app0:/");
+  std::fprintf(stderr, "corsixth-vita: chdir(app0:/) rc=%d errno=%d\n", chdir_rc, chdir_rc == 0 ? 0 : errno);
   std::fprintf(stderr, "corsixth-vita: probes done\n");
 }
 

@@ -154,6 +154,36 @@ if(NOT corsixth_upstream_POPULATED)
     message(FATAL_ERROR "Upstream SrcUnshared/main.cpp layout changed - revisit the vita trace markers.")
   endif()
   file(WRITE "${_vita_main}" "${_vita_main_text}")
+  # Fine-grained markers inside lua_init_no_eval: the hang sits between
+  # "calling lua_init" and the interpreter-path print, and this span holds
+  # the version check, luaopen_random, the preload table, require"debug"
+  # and search_script_file - exactly one marker per step. Temporary.
+  # Revisit on tag bump: the guard below fails loudly if upstream moves it.
+  file(READ "${_vita_src_main}" _vita_noeval_text)
+  string(REPLACE
+    [==[lua_pop(L, 1);]==]
+    [==[lua_pop(L, 1);
+  std::fprintf(stderr, "vita: lua version ok\n"); // VITA_TRACE_NOEVAL]==]
+    _vita_noeval_text "${_vita_noeval_text}")
+  string(REPLACE
+    [==[luaT_cpcall(L, luaopen_random, nullptr);]==]
+    [==[luaT_cpcall(L, luaopen_random, nullptr);
+  std::fprintf(stderr, "vita: random opened\n"); // VITA_TRACE_RANDOM]==]
+    _vita_noeval_text "${_vita_noeval_text}")
+  string(REPLACE
+    [==[luaT_execute(L, "require \"debug\"");]==]
+    [==[luaT_execute(L, "require \"debug\"");
+  std::fprintf(stderr, "vita: debug required\n"); // VITA_TRACE_DEBUG]==]
+    _vita_noeval_text "${_vita_noeval_text}")
+  string(REPLACE
+    [==[auto scriptFilePath = search_script_file(L);]==]
+    [==[std::fprintf(stderr, "vita: entering search\n"); // VITA_TRACE_SEARCH
+  auto scriptFilePath = search_script_file(L);]==]
+    _vita_noeval_text "${_vita_noeval_text}")
+  if(NOT _vita_noeval_text MATCHES "VITA_TRACE_SEARCH")
+    message(FATAL_ERROR "Upstream Src/main.cpp layout changed - revisit the vita noeval trace markers.")
+  endif()
+  file(WRITE "${_vita_src_main}" "${_vita_noeval_text}")
   # std::filesystem::status() hangs/throws on Vita device paths (app0:/ux0:),
   # which freezes the interpreter search with zero output. Probe readability
   # with a raw POSIX open() instead - proven working on hardware. The only
