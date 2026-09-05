@@ -206,7 +206,9 @@ if(NOT corsixth_upstream_POPULATED)
     [==[bool file_exists(const std::filesystem::path& f) {
   // VITA_FILE_EXISTS_PATCH: no std::filesystem on Vita device paths.
   const std::string path = f.string();
+  std::fprintf(stderr, "vita: file_exists('%s')\n", path.c_str());
   const int fd = ::open(path.c_str(), O_RDONLY);
+  std::fprintf(stderr, "vita: file_exists open fd=%d\n", fd);
   if (fd < 0) return false;
   ::close(fd);
   return true;
