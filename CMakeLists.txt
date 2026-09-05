@@ -114,6 +114,19 @@ if(NOT corsixth_upstream_POPULATED)
     mainloop(L.get());
     std::fprintf(stderr, "vita: mainloop exited\n");]==]
     _vita_main_text "${_vita_main_text}")
+  string(REPLACE
+    [==[auto scriptFilePath = search_script_file(L);]==]
+    [==[auto scriptFilePath = search_script_file(L);
+  std::fprintf(stderr, "vita: interpreter path='%s'\n", scriptFilePath.c_str()); // VITA_TRACE_PATH]==]
+    _vita_main_text "${_vita_main_text}")
+  string(REPLACE
+    [==[lua_call(L, 1, 2);
+  lua_call(L, 2, 1);]==]
+    [==[lua_call(L, 1, 2);
+  std::fprintf(stderr, "vita: loadfile done\n"); // VITA_TRACE_LOAD
+  lua_call(L, 2, 1);
+  std::fprintf(stderr, "vita: interpreter chunk returned\n");]==]
+    _vita_main_text "${_vita_main_text}")
   if(NOT _vita_main_text MATCHES "VITA_TRACE_LOOP")
     message(FATAL_ERROR "Upstream SrcUnshared/main.cpp layout changed - revisit the vita trace markers.")
   endif()

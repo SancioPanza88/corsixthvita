@@ -34,6 +34,17 @@ __attribute__((constructor)) static void vita_bringup() {
   std::setvbuf(stdout, nullptr, _IONBF, 0);
   std::setvbuf(stderr, nullptr, _IONBF, 0);
   std::fprintf(stderr, "corsixth-vita: bringup done, entering main\n");
+  // Decisive pre-main probe: can we actually READ from app0:? If this line
+  // never appears, the hang is below us (kernel/fs). If size is -1, the
+  // bundled game/ data is missing from the VPK.
+  if (std::FILE* probe = std::fopen("app0:/game/CorsixTH.lua", "rb")) {
+    std::fseek(probe, 0, SEEK_END);
+    long size = std::ftell(probe);
+    std::fclose(probe);
+    std::fprintf(stderr, "corsixth-vita: app0 probe ok, CorsixTH.lua=%ld bytes\n", size);
+  } else {
+    std::fprintf(stderr, "corsixth-vita: app0 probe FAILED (errno=%d)\n", errno);
+  }
 }
 
 } // namespace corsix_vita
