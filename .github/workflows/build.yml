@@ -16,20 +16,23 @@ jobs:
 
       - name: Install dependencies
         run: |
+          set -x
           export VITASDK=/usr/local/vitasdk
           export PATH=$VITASDK/bin:$PATH
-          vdpm update
+          vdpm update || echo "NOTE: vdpm update failed, continuing"
           # Core set. Each line tolerates a missing package name so a vdpm
           # rename fails loudly at configure time instead of here with a
           # cryptic solver error. Adjust names if vdpm complains.
-          vdpm install zlib || true
-          vdpm install sdl2 || true
-          vdpm install sdl2_mixer || vdpm install sdl_mixer || true
-          vdpm install sdl2_image || true
-          vdpm install freetype || true
-          vdpm install libpng || vdpm install png || true
-          vdpm install lua || true
+          vdpm install zlib || echo "NOTE: no vdpm package 'zlib'"
+          vdpm install sdl2 || echo "NOTE: no vdpm package 'sdl2'"
+          vdpm install sdl2_mixer || vdpm install sdl_mixer || echo "NOTE: no vdpm sdl mixer package"
+          vdpm install sdl2_image || echo "NOTE: no vdpm package 'sdl2_image'"
+          vdpm install freetype || echo "NOTE: no vdpm package 'freetype'"
+          vdpm install libpng || vdpm install png || echo "NOTE: no vdpm png package"
+          vdpm install lua || echo "NOTE: no vdpm package 'lua'"
           bash vita/build-lua.sh
+          echo "--- SDK include snapshot ---"
+          ls "$VITASDK/arm-vita-eabi/include" | head -50 || true
 
       - name: Configure
         run: |
