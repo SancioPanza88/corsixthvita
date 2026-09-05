@@ -96,11 +96,11 @@ target_link_libraries(CorsixTH PRIVATE vita_platform)
 
 # Placeholder LiveArea art is generated at configure time (see
 # vita/gen_livearea.py) so the repo stays text-only. Real art lands later.
-# If no python3 is around, package without custom art instead of failing
-# the whole configure.
+# Pairs are collected as "src=dst" lines for vita/package.cmake; when python3
+# is missing the game still packages, just with default LiveArea art.
 set(VITA_LIVEAREA_DIR "${CMAKE_BINARY_DIR}/sce_sys")
 find_program(VITA_PYTHON python3)
-set(VITA_LIVEAREA_FILES "")
+set(VITA_ART_PAIRS "")
 if(VITA_PYTHON)
   execute_process(
     COMMAND "${VITA_PYTHON}" "${CMAKE_CURRENT_SOURCE_DIR}/vita/gen_livearea.py" "${VITA_LIVEAREA_DIR}"
@@ -108,27 +108,55 @@ if(VITA_PYTHON)
   )
 endif()
 if(VITA_PYTHON AND _livearea_rc EQUAL 0)
-  set(VITA_LIVEAREA_FILES
-    FILE "${VITA_LIVEAREA_DIR}/icon0.png" sce_sys/icon0.png
-    FILE "${VITA_LIVEAREA_DIR}/livearea/contents/bg.png" sce_sys/livearea/contents/bg.png
-    FILE "${VITA_LIVEAREA_DIR}/livearea/contents/startup.png" sce_sys/livearea/contents/startup.png
-    FILE "${CMAKE_CURRENT_SOURCE_DIR}/vita/sce_sys/livearea/contents/template.xml" sce_sys/livearea/contents/template.xml
+  list(APPEND VITA_ART_PAIRS
+    "${VITA_LIVEAREA_DIR}/icon0.png=sce_sys/icon0.png"
+    "${VITA_LIVEAREA_DIR}/livearea/contents/bg.png=sce_sys/livearea/contents/bg.png"
+    "${VITA_LIVEAREA_DIR}/livearea/contents/startup.png=sce_sys/livearea/contents/startup.png"
+    "${CMAKE_CURRENT_SOURCE_DIR}/vita/sce_sys/livearea/contents/template.xml=sce_sys/livearea/contents/template.xml"
   )
 else()
   message(WARNING "LiveArea art skipped (no python3 or generator failed) - packaging with defaults.")
 endif()
+string(REPLACE ";" "\n" _art_text "${VITA_ART_PAIRS}")
+file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/vita_art.txt" CONTENT "${_art_text}\n")
 
-vita_create_self(eboot.bin CorsixTH UNSAFE)
-
-# vita_create_self only wires the velf step to the executable by file path.
-# Under parallel make that is not enough to serialize it after the (slow)
-# link, so pin the order explicitly. Belt and braces; harmless if redundant.
-if(TARGET CorsixTH-velf)
-  add_dependencies(CorsixTH-velf CorsixTH)
-endif()
-
-vita_create_vpk(corsixth.vpk ${VITA_TITLEID} eboot.bin
-  VERSION ${VITA_VERSION}
-  NAME ${VITA_APP_NAME}
-  ${VITA_LIVEAREA_FILES}
+# libSDL2.a / libSDL2_mixer.a come in by plain path (upstream uses legacy
+# find modules), so their Sce dependencies do not propagate as INTERFACE
+# usage requirements the way SDL2::SDL2 would. List the set SDL itself
+# needs on Vita explicitly (mirrors SDL's EXTRA_LIBS for the VITA target).
+# No libm: newlib keeps math in libc and SDL deliberately skips it on Vita.
+target_link_libraries(CorsixTH PRIVATE
+  SceGxm_stub
+  SceDisplay_stub
+  SceCtrl_stub
+  SceAppMgr_stub
+  SceAppUtil_stub
+  SceAudio_stub
+  SceAudioIn_stub
+  SceSysmodule_stub
+  SceIofilemgr_stub
+  SceCommonDialog_stub
+  SceTouch_stub
+  SceHid_stub
+  SceMotion_stub
+  ScePower_stub
+  SceProcessmgr_stub
 )
+
+# Packaging runs as an explicit second build step (see workflow), strictly
+# after the executable is linked. Deliberately NOT done with the
+# vita_create_self/vpk ALL-target macros: those race the link under
+# parallel make on large trees (velf conversion firing on a missing ELF).
+add_custom_target(package-vpk
+  COMMAND "${CMAKE_COMMAND}"
+    "-DELF_FILE=$<TARGET_FILE:CorsixTH>"
+    "-DOUT_DIR=${CMAKE_BINARY_DIR}"
+    "-DTITLEID=${VITA_TITLEID}"
+    "-DVERSION=${VITA_VERSION}"
+    "-DAPP_NAME=${VITA_APP_NAME}"
+    "-DART_LIST=${CMAKE_BINARY_DIR}/vita_art.txt"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/vita/package.cmake"
+  COMMENT "Packaging corsixth.vpk"
+  VERBATIM
+)
+add_dependencies(package-vpk CorsixTH)

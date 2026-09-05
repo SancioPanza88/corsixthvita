@@ -77,6 +77,7 @@ top-level `CMakeLists.txt`; background in `docs/vita-notes.md`.
 ```
 CMakeLists.txt            fetch + configure upstream, link platform lib, package VPK
 vita/vita_platform.*      data-dir bring-up, power hooks (thin on purpose)
+vita/package.cmake        eboot.bin + VPK from the linked ELF (explicit step)
 vita/build-lua.sh         fallback Lua 5.4 cross-build for the SDK
 vita/gen_livearea.py      placeholder LiveArea art (stdlib PNG writer)
 vita/sce_sys/...          LiveArea template (final art still TODO)

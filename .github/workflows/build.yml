@@ -77,6 +77,24 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           exit $rc
 
+      - name: Package VPK
+        run: |
+          export VITASDK=/usr/local/vitasdk
+          export PATH=$VITASDK/bin:$PATH
+          set +e
+          cmake --build build --target package-vpk >package.log 2>&1
+          rc=$?
+          set -e
+          tail -5 package.log || true
+          ls -la build/*.vpk || true
+          {
+            echo "## Package digest (exit $rc)"
+            echo '```'
+            tail -25 package.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
+
       - name: Upload VPK
         uses: actions/upload-artifact@v4
         with:
