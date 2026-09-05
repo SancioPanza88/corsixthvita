@@ -159,6 +159,7 @@ if(NOT corsixth_upstream_POPULATED)
   # the version check, luaopen_random, the preload table, require"debug"
   # and search_script_file - exactly one marker per step. Temporary.
   # Revisit on tag bump: the guard below fails loudly if upstream moves it.
+  set(_vita_src_main "${corsixth_upstream_SOURCE_DIR}/CorsixTH/Src/main.cpp")
   file(READ "${_vita_src_main}" _vita_noeval_text)
   string(REPLACE
     [==[lua_pop(L, 1);]==]
@@ -190,7 +191,6 @@ if(NOT corsixth_upstream_POPULATED)
   # caller checks the bundled interpreter file, so treating readable dirs as
   # existing is harmless.
   # Revisit on tag bump: the guard below fails loudly if upstream moves it.
-  set(_vita_src_main "${corsixth_upstream_SOURCE_DIR}/CorsixTH/Src/main.cpp")
   file(READ "${_vita_src_main}" _vita_src_main_text)
   string(REPLACE
     [==[#include <filesystem>]==]
