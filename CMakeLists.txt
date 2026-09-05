@@ -154,7 +154,10 @@ add_library(vita_luamods STATIC
 )
 target_include_directories(vita_luamods PRIVATE "$ENV{VITASDK}/arm-vita-eabi/include")
 target_compile_definitions(CorsixTH PRIVATE CORSIX_TH_LINK_LUA_MODULES)
-target_link_libraries(CorsixTH PRIVATE vita_luamods)
+# NOTE: vita_platform linked again after luamods - it provides the
+# symlink/readlink stubs luafilesystem needs, and static linking is
+# one-pass, so the provider must come after the user.
+target_link_libraries(CorsixTH PRIVATE vita_luamods vita_platform)
 
 # Placeholder LiveArea art is generated at configure time (see
 # vita/gen_livearea.py) so the repo stays text-only. Real art lands later.
