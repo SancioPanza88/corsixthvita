@@ -32,6 +32,7 @@ include(FetchContent)
 FetchContent_Declare(
   corsixth_upstream
   URL "https://github.com/CorsixTH/CorsixTH/archive/refs/tags/${CORSIXTH_TAG}.tar.gz"
+  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 
 # Vita-safe defaults. Applied before the upstream tree is configured.
@@ -52,7 +53,28 @@ set(FETCH_UNICODE_FONT OFF CACHE BOOL "" FORCE)
 # and will need a small upstream patch once the binary boots.
 set(SEARCH_LOCAL_DATADIRS OFF CACHE BOOL "" FORCE)
 
-FetchContent_MakeAvailable(corsixth_upstream)
+FetchContent_GetProperties(corsixth_upstream)
+if(NOT corsixth_upstream_POPULATED)
+  FetchContent_Populate(corsixth_upstream)
+  # Upstream's CorsixTH/Src/CMakeLists.txt addresses config.h.in through
+  # CMAKE_SOURCE_DIR, i.e. it assumes a top-level checkout. Rewrite that one
+  # line to the list-dir-relative form so the tree also configures as a
+  # FetchContent subdir. Revisit on tag bump: the guard below fails loudly
+  # if upstream moves the line.
+  set(_cfg_lists "${corsixth_upstream_SOURCE_DIR}/CorsixTH/Src/CMakeLists.txt")
+  file(READ "${_cfg_lists}" _cfg_text)
+  # Bracket arguments: no variable expansion, the ${...} below is matched
+  # and written literally.
+  string(REPLACE
+    [==[configure_file(${CMAKE_SOURCE_DIR}/CorsixTH/Src/config.h.in]==]
+    [==[configure_file(${CMAKE_CURRENT_LIST_DIR}/config.h.in]==]
+    _cfg_text "${_cfg_text}")
+  if(NOT _cfg_text MATCHES "CMAKE_CURRENT_LIST_DIR}/config.h.in")
+    message(FATAL_ERROR "Upstream Src/CMakeLists layout changed - revisit the config.h.in path fix.")
+  endif()
+  file(WRITE "${_cfg_lists}" "${_cfg_text}")
+endif()
+add_subdirectory("${corsixth_upstream_SOURCE_DIR}" "${corsixth_upstream_BINARY_DIR}")
 
 # Small static lib with Vita bring-up (data dirs, power policy hooks).
 # Linked into the upstream executable below; the init itself runs from a
