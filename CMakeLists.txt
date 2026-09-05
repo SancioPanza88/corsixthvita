@@ -178,6 +178,16 @@ target_link_libraries(CorsixTH PRIVATE
   -Wl,--end-group
 )
 
+# Upstream links its own libfreetype.a AFTER our group above (transitive
+# PUBLIC deps come after direct ones), so freetype's bzip2 dependency needs
+# a second copy after it: static linking is one-pass, our group's bz2 was
+# already processed by then. Appending to CorsixTH_lib's INTERFACE lands
+# after upstream's freetype entry.
+if(NOT TARGET CorsixTH_lib)
+  message(FATAL_ERROR "Upstream target 'CorsixTH_lib' not found - check CORSIXTH_TAG layout.")
+endif()
+target_link_libraries(CorsixTH_lib PUBLIC ${VITA_BZ2_LIB})
+
 # Packaging runs as an explicit second build step (see workflow), strictly
 # after the executable is linked. Deliberately NOT done with the
 # vita_create_self/vpk ALL-target macros: those race the link under
