@@ -45,4 +45,21 @@ make install \
   INSTALL_LMOD="$PREFIX/share/lua/$LUA_VER" \
   INSTALL_CMOD="$PREFIX/lib/lua/$LUA_VER"
 
+# Vita newlib's <limits.h> only exposes LLONG_MAX in C mode, so every C++
+# translation unit including lua.h dies in luaconf.h with "Compiler does not
+# support 'long long'". The compiler itself is fine (the C build above just
+# used long long), so backfill the three macros under a guard. Skipped
+# automatically if a future SDK header provides them.
+if ! grep -q VITA_LLONG_BACKFILL "$PREFIX/include/luaconf.h"; then
+  cat >> "$PREFIX/include/luaconf.h" <<'EOF'
+
+/* VITA_LLONG_BACKFILL: newlib omits these in C++ mode; long long works. */
+#if defined(__cplusplus) && !defined(LLONG_MAX)
+#define LLONG_MAX 9223372036854775807LL
+#define LLONG_MIN (-LLONG_MAX - 1LL)
+#define ULLONG_MAX 18446744073709551615ULL
+#endif
+EOF
+fi
+
 echo "lua $LUA_VER installed into $PREFIX"
