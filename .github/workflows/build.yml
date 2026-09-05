@@ -121,6 +121,27 @@ jobs:
                 ok = False
           sys.exit(0 if ok else 1)
           PY
+          # The game cannot boot without its bundled scripts: fail here if
+          # the game/ tree did not make it into the VPK.
+          python3 - build/*.vpk <<'PY'
+          import glob, sys, zipfile
+          vpk = glob.glob("build/*.vpk")[0]
+          with zipfile.ZipFile(vpk) as z:
+            names = z.namelist()
+          game = [n for n in names if n.startswith("game/")]
+          print(f"game/ entries in VPK: {len(game)}")
+          need = ["game/CorsixTH.lua", "game/Lua/app.lua",
+                  "game/Lua/config.path.txt", "game/Bitmap/"]
+          ok = True
+          for n in need:
+            hit = any(x == n or x.startswith(n) for x in names)
+            print(f"{'OK' if hit else 'FAIL'} {n}")
+            ok = ok and hit
+          if len(game) < 200:
+            print(f"FAIL only {len(game)} game/ entries, expected hundreds")
+            ok = False
+          sys.exit(0 if ok else 1)
+          PY
 
       - name: Upload VPK
         uses: actions/upload-artifact@v4

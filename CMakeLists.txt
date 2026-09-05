@@ -194,8 +194,7 @@ if(NOT corsixth_upstream_POPULATED)
   file(READ "${_vita_src_main}" _vita_src_main_text)
   string(REPLACE
     [==[#include <filesystem>]==]
-    [==[#include <filesystem>
-#include <fcntl.h> // VITA_POSIX_IO
+    [==[#include <fcntl.h> // VITA_POSIX_IO (<filesystem> removed, unusable on Vita)
 #include <unistd.h>]==]
     _vita_src_main_text "${_vita_src_main_text}")
   string(REPLACE
@@ -203,11 +202,12 @@ if(NOT corsixth_upstream_POPULATED)
   const std::filesystem::file_status st = std::filesystem::status(f);
   return std::filesystem::exists(st) && !std::filesystem::is_directory(st);
 }]==]
-    [==[bool file_exists(const std::filesystem::path& f) {
-  // VITA_FILE_EXISTS_PATCH: no std::filesystem on Vita device paths.
-  const std::string path = f.string();
-  std::fprintf(stderr, "vita: file_exists('%s')\n", path.c_str());
-  const int fd = ::open(path.c_str(), O_RDONLY);
+    [==[bool file_exists(const char* f) {
+  // VITA_FILE_EXISTS_PATCH: the C++ filesystem layer is unusable on Vita
+  // device paths (audited: this was its only user in the whole game), so a
+  // raw POSIX open() is all the existence check needs. Plain C types only.
+  std::fprintf(stderr, "vita: file_exists('%s')\n", f);
+  const int fd = ::open(f, O_RDONLY);
   std::fprintf(stderr, "vita: file_exists open fd=%d\n", fd);
   if (fd < 0) return false;
   ::close(fd);
@@ -318,6 +318,10 @@ file(COPY "${corsixth_upstream_SOURCE_DIR}/CorsixTH/CorsixTH.lua" DESTINATION "$
 foreach(_vita_data_dir Lua Bitmap Campaigns Levels)
   file(COPY "${corsixth_upstream_SOURCE_DIR}/CorsixTH/${_vita_data_dir}" DESTINATION "${VITA_GAME_DIR}")
 endforeach()
+# Official config redirect: config_finder.lua honours Lua/config.path.txt, so
+# config.txt, saves and screenshots land on the memory card instead of the
+# read-only app partition. Created here (not upstream) for the same reason.
+file(WRITE "${VITA_GAME_DIR}/Lua/config.path.txt" "ux0:data/corsixth\n")
 # Temporary bring-up tracing inside the bundled interpreter copy (stdout goes
 # to ux0:data/corsixth/stdout.txt). Shows how far CorsixTH.lua gets before a
 # silent hang. Remove once the game reaches the menu. Bracket args below span

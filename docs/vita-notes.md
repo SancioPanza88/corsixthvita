@@ -5,7 +5,9 @@ in sync with it. If something here contradicts the README, the README wins.
 
 ## Paths
 
-- Game code and Lua scripts: resolved by upstream relative to its data dir.
+- Game code and Lua scripts: bundled in the VPK under `game/`, resolved via
+  `app0:/game/CorsixTH.lua`. Writable storage and config live in
+  `ux0:data/corsixth/` (see `Lua/config.path.txt` in the bundle).
 - Writable storage: `ux0:data/corsixth/` (created at boot, see
   `vita/vita_platform.cpp`). Saves go to `ux0:data/corsixth/saves/`.
 - Original Theme Hospital data (`HOSP`, levels, music): copy the GOG install
@@ -41,10 +43,8 @@ Touchscreen stays the primary pointer; buttons are a fallback.
 
 ## Known blockers (runtime, not build)
 
-- `lpeg` / `luafilesystem` are loaded by upstream at runtime via `require`.
-  Vita homebrew cannot `dlopen` those the way desktop does. Fix: build both
-  as static archives and register them from C before the Lua state boots
-  (upstream already supports linked modules under vcpkg; mirror that).
+- `lpeg` / `luafilesystem` are statically linked from source (1.1.0 / 1.8.0)
+  and pre-registered, since Vita cannot `dlopen` them at runtime.
 - MIDI music needs FluidSynth or a soundfont path; OGG jukebox tracks work
   through SDL_mixer and come first.
 
