@@ -1,6 +1,7 @@
 #include "vita_platform.h"
 
 #include <psp2/io/fcntl.h>
+#include <psp2/io/stat.h>
 
 namespace corsix_vita {
 

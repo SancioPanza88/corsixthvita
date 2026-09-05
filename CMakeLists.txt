@@ -120,6 +120,13 @@ endif()
 
 vita_create_self(eboot.bin CorsixTH UNSAFE)
 
+# vita_create_self only wires the velf step to the executable by file path.
+# Under parallel make that is not enough to serialize it after the (slow)
+# link, so pin the order explicitly. Belt and braces; harmless if redundant.
+if(TARGET CorsixTH-velf)
+  add_dependencies(CorsixTH-velf CorsixTH)
+endif()
+
 vita_create_vpk(corsixth.vpk ${VITA_TITLEID} eboot.bin
   VERSION ${VITA_VERSION}
   NAME ${VITA_APP_NAME}
