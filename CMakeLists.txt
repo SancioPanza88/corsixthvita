@@ -136,19 +136,21 @@ FetchContent_GetProperties(vita_lpeg)
 if(NOT vita_lpeg_POPULATED)
   FetchContent_Populate(vita_lpeg)
 endif()
-# Roberto's lpeg tarball layout varies (root vs subdir); locate lpeg.c.
+# lpeg 1.1.0 ships split sources (lpcode.c, lpcap.c, ...), older releases a
+# single lpeg.c; the tarball may also nest them one level down. Glob it all.
 file(GLOB _vita_lpeg_src
+  "${vita_lpeg_SOURCE_DIR}/lp*.c"
+  "${vita_lpeg_SOURCE_DIR}/*/lp*.c"
   "${vita_lpeg_SOURCE_DIR}/lpeg.c"
   "${vita_lpeg_SOURCE_DIR}/*/lpeg.c"
 )
 list(LENGTH _vita_lpeg_src _vita_lpeg_n)
 if(NOT _vita_lpeg_n GREATER 0)
-  message(FATAL_ERROR "lpeg.c not found under ${vita_lpeg_SOURCE_DIR}")
+  message(FATAL_ERROR "No lpeg sources found under ${vita_lpeg_SOURCE_DIR}")
 endif()
-list(GET _vita_lpeg_src 0 _vita_lpeg_c)
 add_library(vita_luamods STATIC
   "${vita_lfs_SOURCE_DIR}/src/lfs.c"
-  "${_vita_lpeg_c}"
+  ${_vita_lpeg_src}
 )
 target_include_directories(vita_luamods PRIVATE "$ENV{VITASDK}/arm-vita-eabi/include")
 target_compile_definitions(CorsixTH PRIVATE CORSIX_TH_LINK_LUA_MODULES)
