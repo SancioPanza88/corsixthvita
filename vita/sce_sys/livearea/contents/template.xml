@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<livearea style="a1" format="ver1.0" content="bg">
+  <livearea-background>
+    <image>bg.png</image>
+  </livearea-background>
+  <gate>
+    <startup>
+      <image>startup.png</image>
+    </startup>
+  </gate>
+  <frame id="frame1">
+    <liveitem>
+      <text>
+        <str>CorsixTH</str>
+      </text>
+    </liveitem>
+    <liveitem>
+      <text>
+        <str>Theme Hospital engine port. Work in progress.</str>
+      </text>
+    </liveitem>
+  </frame>
+</livearea>

@@ -1,0 +1,5 @@
+# Keep Unix line endings everywhere that CI touches. Checkout on Windows
+# must not turn shell scripts or CMake files into CRLF.
+* text=auto eol=lf
+*.png binary
+*.vpk binary
