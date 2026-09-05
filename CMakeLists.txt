@@ -53,6 +53,20 @@ set(FETCH_UNICODE_FONT OFF CACHE BOOL "" FORCE)
 # and will need a small upstream patch once the binary boots.
 set(SEARCH_LOCAL_DATADIRS OFF CACHE BOOL "" FORCE)
 
+# Vita newlib workaround: its <limits.h> only defines LLONG_MAX/ULLONG_MAX
+# when __STDC_VERSION__ is set (C mode). In C++ mode the macros stay
+# undefined, so Lua's luaconf.h hits `#error "Compiler does not support
+# 'long long'"` even though the compiler itself handles long long fine.
+# vita/build-lua.sh patches luaconf.h early (right after its
+# `#include <limits.h>`); this is belt-and-braces so an unpatched header
+# (e.g. a future vdpm lua package) still configures. Newer newlib guards
+# with `#undef` before redefining, so predefining here is safe.
+add_compile_options(
+  $<$<COMPILE_LANGUAGE:CXX>:-DLLONG_MAX=9223372036854775807LL>
+  $<$<COMPILE_LANGUAGE:CXX>:-DLLONG_MIN=(-9223372036854775807LL-1LL)>
+  $<$<COMPILE_LANGUAGE:CXX>:-DULLONG_MAX=18446744073709551615ULL>
+)
+
 FetchContent_GetProperties(corsixth_upstream)
 if(NOT corsixth_upstream_POPULATED)
   FetchContent_Populate(corsixth_upstream)
